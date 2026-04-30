@@ -1,1 +1,87 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>DeepSeek AI Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #0f1724 0%, #1e293b 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px;
+            height: 90vh;
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 32px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .header {
+            background: rgba(15, 23, 42, 0.9);
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+        .header h1 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .header p {
+            color: #94a3b8;
+            font-size: 0.75rem;
+            margin-top: 4px;
+        }
+        .chat-iframe {
+            width: 100%;
+            height: calc(100% - 70px);
+            border: none;
+            background: transparent;
+        }
+        footer {
+            text-align: center;
+            padding: 8px;
+            font-size: 0.65rem;
+            color: #475569;
+            background: rgba(15, 23, 42, 0.8);
+        }
+        @media (max-width: 600px) {
+            .container {
+                height: 95vh;
+                border-radius: 24px;
+            }
+            .header h1 {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🧠 Nexus AI</h1>
+        <p>Powered by DeepSeek – same intelligence as the assistant you've been talking to</p>
+    </div>
+    <iframe class="chat-iframe" src="https://chat.deepseek.com/" title="DeepSeek Chat"></iframe>
+    <footer>🔒 Your conversations are private. Powered by DeepSeek.</footer>
+</div>
+</body>
+</html>
