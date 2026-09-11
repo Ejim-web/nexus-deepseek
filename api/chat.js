@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+  const admin = require('firebase-admin');
 
 const MODEL = process.env.NEXUS_MODEL || 'openrouter/free';
 const VISION_MODEL =
