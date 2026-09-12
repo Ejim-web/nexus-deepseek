@@ -11,7 +11,7 @@ const MAX_HISTORY_CHARS = 12000;
 const MAX_IMAGE_BASE64 = 12 * 1024 * 1024;
 const MAX_SEARCH_QUERY = 300;
 const MAX_SEARCH_RESULTS = 6;
-const SEARCH_MODEL = process.env.SERPDIVE_MODEL || "krill";
+const SEARCH_MODEL = process.env.PARALLEL_SEARCH_MODE || "basic";
 
 function initFirebase() {
   if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
@@ -318,43 +318,66 @@ function cleanSearchQuery(message) {
   return query.slice(0, MAX_SEARCH_QUERY) || String(message || "").slice(0, MAX_SEARCH_QUERY);
 }
 
+function buildParallelQueries(query) {
+  const text = String(query || "").trim().replace(/\s+/g, " ");
+  const words = text.split(" ").filter(Boolean);
+  const first = words.slice(0, 6).join(" ");
+  const second = words.slice(Math.max(0, words.length - 6)).join(" ");
+  const candidates = [
+    first,
+    second,
+    words.slice(0, 4).concat(["latest", "information"]).join(" ")
+  ];
+
+  return candidates
+    .map(item => item.trim())
+    .filter(item => item.split(" ").length >= 3)
+    .map(item => item.slice(0, 200))
+    .filter((item, index, array) => array.indexOf(item) === index)
+    .slice(0, 3);
+}
+
 async function searchWeb(query) {
-  const key = process.env.SERPDIVE_API_KEY;
+  const key = process.env.PARALLEL_API_KEY;
   if (!key) {
-    const error = new Error("SERPDIVE_API_KEY is missing in Vercel Environment Variables.");
-    error.code = "SERPDIVE_KEY_MISSING";
+    const error = new Error("PARALLEL_API_KEY is missing in Vercel Environment Variables.");
+    error.code = "PARALLEL_KEY_MISSING";
     error.status = 500;
     throw error;
   }
 
+  const objective = String(query || "").trim().slice(0, MAX_SEARCH_QUERY);
+  const searchQueries = buildParallelQueries(objective);
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 80000);
+  const timeout = setTimeout(() => controller.abort(), 60000);
 
   let response;
   try {
-    response = await fetch("https://api.serpdive.com/v1/search", {
+    response = await fetch("https://api.parallel.ai/v1/search", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${key}`,
+        "x-api-key": key,
         "Content-Type": "application/json",
         Accept: "application/json"
       },
       body: JSON.stringify({
-        query: query.slice(0, MAX_SEARCH_QUERY),
-        model: SEARCH_MODEL,
-        max_results: MAX_SEARCH_RESULTS
+        objective,
+        search_queries: searchQueries,
+        mode: SEARCH_MODEL,
+        max_chars_total: 30000
       }),
       signal: controller.signal
     });
   } catch (error) {
     if (error?.name === "AbortError") {
       const timeoutError = new Error("Web search timed out. Please try again.");
-      timeoutError.code = "SERPDIVE_TIMEOUT";
+      timeoutError.code = "PARALLEL_TIMEOUT";
       timeoutError.status = 504;
       throw timeoutError;
     }
 
-    error.code = "SERPDIVE_NETWORK_ERROR";
+    error.code = "PARALLEL_NETWORK_ERROR";
     throw error;
   } finally {
     clearTimeout(timeout);
@@ -365,15 +388,16 @@ async function searchWeb(query) {
   try {
     data = raw ? JSON.parse(raw) : {};
   } catch {
-    const error = new Error("SERPdive returned an invalid response.");
-    error.code = "SERPDIVE_INVALID_RESPONSE";
+    const error = new Error("Parallel returned an invalid response.");
+    error.code = "PARALLEL_INVALID_RESPONSE";
     error.status = 502;
     throw error;
   }
 
   if (!response.ok) {
-    const error = new Error(data?.message || data?.error || `SERPdive returned HTTP ${response.status}.`);
-    error.code = data?.error || "SERPDIVE_HTTP_ERROR";
+    const detail = data?.detail || data?.message || data?.error || `Parallel returned HTTP ${response.status}.`;
+    const error = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    error.code = "PARALLEL_HTTP_ERROR";
     error.status = response.status;
     throw error;
   }
@@ -381,15 +405,17 @@ async function searchWeb(query) {
   const results = Array.isArray(data?.results) ? data.results : [];
 
   return {
-    query: data?.query || query,
-    model: data?.model || SEARCH_MODEL,
-    answer: data?.answer || null,
+    query: objective,
+    model: SEARCH_MODEL,
+    sessionId: data?.session_id || null,
     results: results.slice(0, MAX_SEARCH_RESULTS).map((item, index) => ({
       id: index + 1,
       title: String(item?.title || "Untitled source").slice(0, 500),
       url: String(item?.url || ""),
-      date: item?.date || null,
-      content: String(item?.content || "").slice(0, 7000)
+      date: item?.publish_date || item?.date || null,
+      content: Array.isArray(item?.excerpts)
+        ? item.excerpts.map(x => String(x || "")).join("\n\n").slice(0, 7000)
+        : String(item?.content || item?.excerpt || "").slice(0, 7000)
     })).filter(item => item.url && item.content)
   };
 }
@@ -404,7 +430,7 @@ function buildSearchContext(search) {
     return `[${source.id}] ${source.title}\nURL: ${source.url}${date}\nContent:\n${source.content}`;
   }).join("\n\n---\n\n");
 
-  return `LIVE WEB SEARCH RESULTS\nQuery: ${search.query}\nSearch model: ${search.model}\n\n${sourceText}`;
+  return `LIVE WEB SEARCH RESULTS\nQuery: ${search.query}\nSearch mode: ${search.model}\n\n${sourceText}`;
 }
 
 async function callOpenRouter(messages) {
@@ -696,23 +722,23 @@ module.exports = async function handler(req, res) {
       ? error.status
       : 500;
 
-    if (error?.code === "SERPDIVE_KEY_MISSING") {
+    if (error?.code === "PARALLEL_KEY_MISSING") {
       return json(res, 500, {
-        error: "SERPDIVE_API_KEY is missing in Vercel. Add it to Environment Variables and redeploy.",
+        error: "PARALLEL_API_KEY is missing in Vercel. Add it to Environment Variables and redeploy.",
         code: error.code
       });
     }
 
-    if (error?.code === "SERPDIVE_HTTP_ERROR" || error?.code === "invalid_api_key" || error?.code === "missing_api_key") {
+    if (error?.code === "PARALLEL_HTTP_ERROR" || error?.code === "invalid_api_key" || error?.code === "missing_api_key") {
       return json(res, status, {
-        error: "SERPdive web search could not authenticate. Check your SERPDIVE_API_KEY in Vercel.",
+        error: "Parallel web search could not authenticate. Check your PARALLEL_API_KEY in Vercel.",
         code: error.code
       });
     }
 
-    if (error?.code === "monthly_quota_exceeded" || error?.code === "key_limit_exceeded") {
+    if (error?.code === "parallel_quota_exceeded" || error?.code === "parallel_key_limit_exceeded") {
       return json(res, 429, {
-        error: "Your SERPdive web-search credit limit has been reached. Normal AI chat can still work without web search.",
+        error: "Your Parallel web-search credit limit has been reached. Normal AI chat can still work without web search.",
         code: error.code
       });
     }
