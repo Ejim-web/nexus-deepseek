@@ -1,543 +1,528 @@
-const admin = require('firebase-admin');
+const admin = require("firebase-admin");
 
 /*
- * ---------------------------------------------------------
- * Firebase
- * ---------------------------------------------------------
- */
+|--------------------------------------------------------------------------
+| Firebase Admin
+|--------------------------------------------------------------------------
+*/
 
-function initFirebase() {
-  if (
-    !process.env.FIREBASE_PROJECT_ID ||
-    !process.env.FIREBASE_CLIENT_EMAIL ||
-    !process.env.FIREBASE_PRIVATE_KEY
-  ) {
-    throw new Error('Firebase server configuration is missing.');
-  }
+if (!admin.apps.length) {
+  const privateKey = String(
+    process.env.FIREBASE_PRIVATE_KEY || ""
+  ).replace(/\\n/g, "\n");
 
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-      })
-    });
-  }
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey
+    })
+  });
 }
 
 /*
- * ---------------------------------------------------------
- * Cloudinary configuration
- * ---------------------------------------------------------
- */
+|--------------------------------------------------------------------------
+| Helpers
+|--------------------------------------------------------------------------
+*/
 
-function getCloudinaryConfig() {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+function sendJson(res, status, data) {
+  res.status(status);
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Cache-Control", "no-store");
 
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error(
-      'Cloudinary configuration is missing. Required environment variables: ' +
-      'CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.'
-    );
-  }
-
-  return {
-    cloudName,
-    apiKey,
-    apiSecret
-  };
+  return res.end(JSON.stringify(data));
 }
 
-/*
- * ---------------------------------------------------------
- * Image settings
- * ---------------------------------------------------------
- *
- * The frontend can send:
- *
- * size:
- *   1024x1024
- *   1536x1024
- *   1024x1536
- *   1792x1024
- *   1024x1792
- *
- * aspectRatio can also be sent directly.
- */
+function getBearerToken(req) {
+  const authorization = String(
+    req.headers.authorization || ""
+  );
 
-function getImageSettings(body) {
-  const requestedSize = String(
-    body?.size || ''
-  ).trim();
-
-  let aspectRatio =
-    String(
-      body?.aspectRatio ||
-      body?.aspect_ratio ||
-      ''
-    ).trim();
-
-  if (!aspectRatio) {
-    if (
-      requestedSize === '1536x1024' ||
-      requestedSize === '1792x1024' ||
-      requestedSize === '16:9'
-    ) {
-      aspectRatio = '16:9';
-    } else if (
-      requestedSize === '1024x1536' ||
-      requestedSize === '1024x1792' ||
-      requestedSize === '9:16'
-    ) {
-      aspectRatio = '9:16';
-    } else if (
-      requestedSize === '1024x1280' ||
-      requestedSize === '4:5'
-    ) {
-      aspectRatio = '4:5';
-    } else if (
-      requestedSize === '1280x1024' ||
-      requestedSize === '5:4'
-    ) {
-      aspectRatio = '5:4';
-    } else if (
-      requestedSize === '1536x1536' ||
-      requestedSize === '1:1'
-    ) {
-      aspectRatio = '1:1';
-    } else {
-      aspectRatio = '1:1';
-    }
+  if (!authorization.startsWith("Bearer ")) {
+    return null;
   }
 
-  const allowedRatios = [
-    '1:1',
-    '16:9',
-    '9:16',
-    '4:5',
-    '5:4',
-    '4:3',
-    '3:4',
-    '3:2',
-    '2:3'
+  return authorization.substring(7).trim();
+}
+
+function getPrompt(req) {
+  return String(
+    req.body?.prompt || ""
+  ).trim().slice(0, 4000);
+}
+
+function validAspectRatio(value) {
+  const allowed = [
+    "1:1",
+    "16:9",
+    "9:16",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "4:5",
+    "5:4"
   ];
 
-  if (!allowedRatios.includes(aspectRatio)) {
-    aspectRatio = '1:1';
-  }
+  return allowed.includes(value)
+    ? value
+    : "1:1";
+}
 
-  const requestedResolution = String(
-    body?.resolution || ''
-  ).toUpperCase();
+function validResolution(value) {
+  const allowed = [
+    "1K",
+    "2K",
+    "4K"
+  ];
 
-  const quality = String(
-    body?.quality || ''
-  ).toLowerCase();
-
-  let resolution = '1K';
-
-  if (
-    requestedResolution === '2K' ||
-    quality === 'high' ||
-    quality === 'hd' ||
-    quality === 'premium'
-  ) {
-    resolution = '2K';
-  }
-
-  return {
-    aspectRatio,
-    resolution
-  };
+  return allowed.includes(value)
+    ? value
+    : "1K";
 }
 
 /*
- * ---------------------------------------------------------
- * Cloudinary model
- * ---------------------------------------------------------
- *
- * Default:
- *
- * family = nano-banana
- * tier   = premium
- *
- * Cloudinary's current model registry resolves this to
- * nano-banana-2.
- *
- * You can also set:
- *
- * NEXUS_CLOUDINARY_IMAGE_MODEL_ID=nano-banana-2
- *
- * in Vercel if you want to pin the exact model.
- */
-
-function getModel() {
-  const exactModelId =
-    String(
-      process.env.NEXUS_CLOUDINARY_IMAGE_MODEL_ID || ''
-    ).trim();
-
-  if (exactModelId) {
-    return {
-      id: exactModelId
-    };
-  }
-
-  return {
-    family:
-      process.env.NEXUS_CLOUDINARY_IMAGE_FAMILY ||
-      'nano-banana',
-
-    tier:
-      process.env.NEXUS_CLOUDINARY_IMAGE_TIER ||
-      'premium'
-  };
-}
-
-/*
- * ---------------------------------------------------------
- * Main handler
- * ---------------------------------------------------------
- */
+|--------------------------------------------------------------------------
+| API
+|--------------------------------------------------------------------------
+*/
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({
-      error: 'Method not allowed.'
+
+  /*
+  |--------------------------------------------------------------------------
+  | Method
+  |--------------------------------------------------------------------------
+  */
+
+  if (req.method !== "POST") {
+    return sendJson(res, 405, {
+      available: false,
+      error: "Method not allowed. Use POST."
     });
   }
 
   try {
+
     /*
-     * Firebase authentication
-     */
+    |--------------------------------------------------------------------------
+    | Firebase Authentication
+    |--------------------------------------------------------------------------
+    */
 
-    initFirebase();
+    const token = getBearerToken(req);
 
-    const authHeader =
-      req.headers.authorization || '';
-
-    if (!authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        error: 'Authentication required.'
+    if (!token) {
+      return sendJson(res, 401, {
+        available: false,
+        error: "Please sign in before generating an image."
       });
     }
 
-    const idToken =
-      authHeader
-        .slice(7)
-        .trim();
+    let user;
 
-    if (!idToken) {
-      return res.status(401).json({
-        error: 'Authentication token is missing.'
+    try {
+
+      user =
+        await admin
+          .auth()
+          .verifyIdToken(token);
+
+    } catch (authError) {
+
+      console.error(
+        "Firebase authentication error:",
+        authError
+      );
+
+      return sendJson(res, 401, {
+        available: false,
+        error: "Your login session is invalid or expired."
       });
     }
 
-    await admin
-      .auth()
-      .verifyIdToken(idToken);
+    if (!user || !user.uid) {
+      return sendJson(res, 401, {
+        available: false,
+        error: "Authentication failed."
+      });
+    }
 
     /*
-     * Get user's image prompt
-     */
+    |--------------------------------------------------------------------------
+    | Prompt
+    |--------------------------------------------------------------------------
+    */
 
-    const prompt =
-      String(
-        req.body?.prompt || ''
-      ).trim();
+    const prompt = getPrompt(req);
 
     if (!prompt) {
-      return res.status(400).json({
-        error: 'Image prompt is empty.'
+      return sendJson(res, 400, {
+        available: false,
+        error: "Please describe the image you want."
       });
     }
 
     /*
-     * Cloudinary credentials
-     */
+    |--------------------------------------------------------------------------
+    | Cloudinary Environment Variables
+    |--------------------------------------------------------------------------
+    */
 
-    const {
-      cloudName,
-      apiKey,
-      apiSecret
-    } = getCloudinaryConfig();
+    const cloudName =
+      process.env.CLOUDINARY_CLOUD_NAME;
+
+    const apiKey =
+      process.env.CLOUDINARY_API_KEY;
+
+    const apiSecret =
+      process.env.CLOUDINARY_API_SECRET;
+
+    if (!cloudName) {
+      console.error(
+        "Missing CLOUDINARY_CLOUD_NAME"
+      );
+
+      return sendJson(res, 500, {
+        available: false,
+        error:
+          "Cloudinary cloud name is not configured."
+      });
+    }
+
+    if (!apiKey) {
+      console.error(
+        "Missing CLOUDINARY_API_KEY"
+      );
+
+      return sendJson(res, 500, {
+        available: false,
+        error:
+          "Cloudinary API key is not configured."
+      });
+    }
+
+    if (!apiSecret) {
+      console.error(
+        "Missing CLOUDINARY_API_SECRET"
+      );
+
+      return sendJson(res, 500, {
+        available: false,
+        error:
+          "Cloudinary API secret is not configured."
+      });
+    }
 
     /*
-     * Image settings
-     */
+    |--------------------------------------------------------------------------
+    | Image Settings
+    |--------------------------------------------------------------------------
+    */
 
-    const {
-      aspectRatio,
-      resolution
-    } = getImageSettings(
-      req.body || {}
-    );
+    const aspectRatio =
+      validAspectRatio(
+        String(
+          req.body?.aspectRatio || "1:1"
+        )
+      );
 
-    /*
-     * Model
-     */
-
-    const model = getModel();
-
-    /*
-     * Optional reference images.
-     *
-     * The normal text-to-image request does not need them.
-     *
-     * If references are supplied, they must be Cloudinary
-     * managed assets or HTTPS URLs supported by Cloudinary.
-     */
-
-    const referenceImages =
-      Array.isArray(
-        req.body?.reference_images
-      )
-        ? req.body.reference_images.slice(0, 4)
-        : [];
+    const resolution =
+      validResolution(
+        String(
+          req.body?.resolution || "1K"
+        )
+      );
 
     /*
-     * -------------------------------------------------------
-     * Build Cloudinary request
-     * -------------------------------------------------------
-     */
+    |--------------------------------------------------------------------------
+    | Cloudinary Image Generation Request
+    |--------------------------------------------------------------------------
+    |
+    | nano-banana + premium = Nano Banana 2
+    |
+    */
 
-    const body = {
+    const payload = {
       prompt,
 
-      model,
+      model: {
+        family: "nano-banana",
+        tier: "premium"
+      },
 
       image_size: {
         aspect_ratio: aspectRatio,
         resolution
       },
 
-      format: 'png',
+      format: "png",
 
       target: {
-        target_type: 'managed_asset'
+        target_type: "managed_asset"
       }
     };
 
     /*
-     * If reference images were provided, use Cloudinary's
-     * image_to_image endpoint.
-     *
-     * Otherwise use text_to_image.
-     */
+    |--------------------------------------------------------------------------
+    | Basic Authentication
+    |--------------------------------------------------------------------------
+    */
 
-    let endpoint =
-      `https://api.cloudinary.com/v2/generate/${encodeURIComponent(
-        cloudName
-      )}/text_to_image`;
-
-    if (referenceImages.length > 0) {
-      body.reference_images =
-        referenceImages.map((item) => {
-          if (
-            typeof item === 'string'
-          ) {
-            return {
-              source_type: 'url',
-              url: item
-            };
-          }
-
-          if (
-            item &&
-            typeof item === 'object'
-          ) {
-            if (item.asset_id) {
-              return {
-                source_type: 'managed_asset',
-                asset_id: String(
-                  item.asset_id
-                )
-              };
-            }
-
-            if (item.url) {
-              return {
-                source_type: 'url',
-                url: String(
-                  item.url
-                )
-              };
-            }
-          }
-
-          return null;
-        }).filter(Boolean);
-
-      if (body.reference_images.length > 0) {
-        endpoint =
-          `https://api.cloudinary.com/v2/generate/${encodeURIComponent(
-            cloudName
-          )}/image_to_image`;
-      }
-    }
+    const basicAuth = Buffer
+      .from(
+        `${apiKey}:${apiSecret}`
+      )
+      .toString("base64");
 
     /*
-     * -------------------------------------------------------
-     * Cloudinary Basic Authentication
-     * -------------------------------------------------------
-     */
+    |--------------------------------------------------------------------------
+    | Abort Timeout
+    |--------------------------------------------------------------------------
+    */
 
-    const auth =
-      Buffer
-        .from(
-          `${apiKey}:${apiSecret}`
-        )
-        .toString('base64');
+    const controller =
+      new AbortController();
 
-    /*
-     * -------------------------------------------------------
-     * Generate image
-     * -------------------------------------------------------
-     */
+    const timeout =
+      setTimeout(() => {
+        controller.abort();
+      }, 120000);
 
-    const response =
-      await fetch(
-        endpoint,
-        {
-          method: 'POST',
-
-          headers: {
-            Authorization:
-              `Basic ${auth}`,
-
-            'Content-Type':
-              'application/json'
-          },
-
-          body:
-            JSON.stringify(body)
-        }
-      );
-
-    const raw =
-      await response.text();
-
-    let data = {};
+    let cloudinaryResponse;
 
     try {
-      data =
-        JSON.parse(raw);
-    } catch {
-      data = {};
+
+      cloudinaryResponse =
+        await fetch(
+          `https://api.cloudinary.com/v2/generate/${encodeURIComponent(
+            cloudName
+          )}/text_to_image`,
+          {
+            method: "POST",
+
+            headers: {
+              "Authorization":
+                `Basic ${basicAuth}`,
+
+              "Content-Type":
+                "application/json",
+
+              "Accept":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify(payload),
+
+            signal:
+              controller.signal
+          }
+        );
+
+    } finally {
+
+      clearTimeout(timeout);
+
     }
 
     /*
-     * -------------------------------------------------------
-     * Cloudinary error handling
-     * -------------------------------------------------------
-     */
+    |--------------------------------------------------------------------------
+    | Read Cloudinary Response
+    |--------------------------------------------------------------------------
+    */
 
-    if (!response.ok) {
+    const responseText =
+      await cloudinaryResponse.text();
+
+    let cloudinaryData = {};
+
+    try {
+
+      cloudinaryData =
+        responseText
+          ? JSON.parse(responseText)
+          : {};
+
+    } catch {
+
+      cloudinaryData = {
+        raw: responseText
+      };
+
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cloudinary Error
+    |--------------------------------------------------------------------------
+    */
+
+    if (!cloudinaryResponse.ok) {
+
       console.error(
-        'Cloudinary image generation error:',
-        response.status,
-        raw
+        "Cloudinary generation failed:",
+        cloudinaryResponse.status,
+        cloudinaryData
       );
 
-      const message =
-        data?.error?.message ||
-        data?.message ||
-        `Cloudinary image generation failed (HTTP ${response.status}).`;
+      let errorMessage =
+        "Cloudinary image generation failed.";
 
-      const lower =
-        String(message)
-          .toLowerCase();
+      if (
+        cloudinaryData?.error?.message
+      ) {
 
-      const noCredits =
-        response.status === 402 ||
-        lower.includes('credit') ||
-        lower.includes('quota') ||
-        lower.includes('billing') ||
-        lower.includes('payment') ||
-        lower.includes('limit') ||
-        lower.includes('balance');
+        errorMessage =
+          cloudinaryData.error.message;
 
-      if (noCredits) {
-        return res.status(200).json({
-          available: false,
+      } else if (
+        typeof cloudinaryData?.error ===
+        "string"
+      ) {
 
-          error:
-            'Image generation is currently unavailable because your Cloudinary Image Generation credits or quota have been exhausted.'
-        });
+        errorMessage =
+          cloudinaryData.error;
+
+      } else if (
+        cloudinaryData?.message
+      ) {
+
+        errorMessage =
+          cloudinaryData.message;
+
+      } else if (
+        typeof cloudinaryData?.raw ===
+        "string"
+      ) {
+
+        errorMessage =
+          cloudinaryData.raw.slice(
+            0,
+            800
+          );
+
       }
 
-      return res.status(502).json({
-        available: false,
+      return sendJson(
+        res,
+        cloudinaryResponse.status >= 400 &&
+        cloudinaryResponse.status < 600
+          ? cloudinaryResponse.status
+          : 502,
+        {
+          available: false,
+          error: errorMessage
+        }
+      );
+    }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Find Generated Asset
+    |--------------------------------------------------------------------------
+    */
+
+    const asset =
+      cloudinaryData?.data?.assets?.[0] ||
+      cloudinaryData?.assets?.[0] ||
+      null;
+
+    if (!asset) {
+
+      console.error(
+        "Cloudinary returned no asset:",
+        cloudinaryData
+      );
+
+      return sendJson(res, 502, {
+        available: false,
         error:
-          message
+          "Cloudinary did not return a generated image."
       });
     }
 
     /*
-     * -------------------------------------------------------
-     * Extract generated asset
-     * -------------------------------------------------------
-     */
-
-    const asset =
-      data?.data?.assets?.[0] ||
-      data?.assets?.[0];
+    |--------------------------------------------------------------------------
+    | Find Secure URL
+    |--------------------------------------------------------------------------
+    */
 
     const imageUrl =
       asset?.storage?.secure_url ||
       asset?.secure_url ||
-      asset?.delivery?.secure_url;
-
-    /*
-     * Cloudinary sometimes returns a successful response
-     * without a usable asset URL.
-     */
+      asset?.url ||
+      cloudinaryData?.secure_url ||
+      cloudinaryData?.image_url ||
+      cloudinaryData?.url ||
+      null;
 
     if (!imageUrl) {
+
       console.error(
-        'Cloudinary returned no image URL:',
-        JSON.stringify(data)
+        "Cloudinary asset has no URL:",
+        asset
       );
 
-      return res.status(502).json({
+      return sendJson(res, 502, {
         available: false,
-
         error:
-          'Cloudinary completed the generation but did not return a usable image URL.'
+          "The image was generated, but Cloudinary did not return an image URL."
       });
     }
 
     /*
-     * -------------------------------------------------------
-     * Success
-     * -------------------------------------------------------
-     */
+    |--------------------------------------------------------------------------
+    | Success
+    |--------------------------------------------------------------------------
+    */
 
-    return res.status(200).json({
+    console.log(
+      "Image generated successfully:",
+      {
+        uid: user.uid,
+        model:
+          asset?.model_id ||
+          asset?.model ||
+          "nano-banana-2",
+        aspectRatio,
+        resolution
+      }
+    );
+
+    return sendJson(res, 200, {
+
       available: true,
 
+      success: true,
+
+      /*
+      | Main field used by NexusMind frontend
+      */
+      imageUrl,
+
+      /*
+      | Compatibility fields
+      */
       image: imageUrl,
-
-      imageUrl: imageUrl,
-
       url: imageUrl,
+      secure_url: imageUrl,
 
-      provider: 'cloudinary',
-
+      /*
+      | Model
+      */
       model:
-        asset?.context?.custom?.model_id ||
-        asset?.context?.custom?.model ||
-        asset?.public_id ||
-        (
-          model.id ||
-          `${model.family}:${model.tier}`
-        ),
+        asset?.model_id ||
+        asset?.model ||
+        "nano-banana-2",
 
+      provider:
+        "cloudinary",
+
+      /*
+      | Cloudinary asset information
+      */
       publicId:
         asset?.public_id ||
         null,
@@ -556,27 +541,57 @@ module.exports = async function handler(req, res) {
 
       format:
         asset?.format ||
-        'png',
+        "png",
 
-      prompt,
-
+      /*
+      | Request information
+      */
       aspectRatio,
+      resolution,
 
-      resolution
+      /*
+      | Useful for Firestore history
+      */
+      prompt
+
     });
 
   } catch (error) {
+
     console.error(
-      'Nexus Cloudinary image error:',
+      "NexusMind /api/image error:",
       error
     );
 
-    return res.status(500).json({
-      available: false,
+    /*
+    |--------------------------------------------------------------------------
+    | Timeout
+    |--------------------------------------------------------------------------
+    */
 
+    if (
+      error?.name ===
+      "AbortError"
+    ) {
+
+      return sendJson(res, 504, {
+        available: false,
+        error:
+          "Image generation timed out. Please try again."
+      });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | General Error
+    |--------------------------------------------------------------------------
+    */
+
+    return sendJson(res, 500, {
+      available: false,
       error:
         error?.message ||
-        'Image generation failed.'
+        "Image generation failed. Please try again."
     });
   }
 };
