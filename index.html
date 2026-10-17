@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#070b14">
+<title>NexusMind AI — Your Smarter Assistant</title>
+<meta name="monetag" content="684f3bf16e2188a32dff88887ffe520a">
+<style>
+:root{--bg:#070b14;--panel:#0d1422;--panel2:#111b2d;--line:#23304a;--text:#f5f8ff;--muted:#91a0b8;--a:#31c8ff;--b:#5968ff;--danger:#ff5c78}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+button,input,textarea{font:inherit}button{cursor:pointer}.app{height:100%;display:flex;overflow:hidden}
+.sidebar{width:285px;flex:none;background:#090e18;border-right:1px solid var(--line);padding:15px;display:flex;flex-direction:column;gap:14px}
+.brand{display:flex;align-items:center;gap:10px}.brand-logo{width:43px;height:43px}.brand strong{font-size:17px}.brand small{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+.btn{border:1px solid var(--line);background:#111a2a;color:#dce5f4;border-radius:11px;padding:10px 12px;font-weight:700}.btn:hover{background:#172237}.new{border:0;background:linear-gradient(135deg,var(--a),var(--b));color:white;padding:12px;border-radius:12px;font-weight:900}
+.label{font-size:10px;color:#6d7b93;text-transform:uppercase;letter-spacing:1px}.chats{flex:1;overflow:auto;display:flex;flex-direction:column;gap:5px}
+.chat{display:grid;grid-template-columns:auto 1fr auto;grid-template-rows:auto auto;gap:2px 8px;align-items:center;padding:10px;border:1px solid transparent;border-radius:10px;color:#cbd5e5;cursor:pointer}
+.chat:hover{background:#111a2a}.chat.active{background:#142036;border-color:#293957}
+.chat-icon{grid-row:1 / span 2;font-size:14px}
+.chat-title{grid-column:2;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-preview{grid-column:2;font-size:11px;color:#7a869c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.chat-time{grid-column:3;grid-row:1;font-size:10px;color:#697690}
+.chat-del{grid-column:3;grid-row:2;border:0;background:transparent;color:#68758b;font-size:14px;padding:0;line-height:1}
+.chat-del:hover{color:var(--danger)}
+.bottom{display:flex;gap:7px}.bottom .btn{flex:1;font-size:12px}
+.main{min-width:0;flex:1;display:flex;flex-direction:column}.top{height:64px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 17px;background:rgba(7,11,20,.92);backdrop-filter:blur(12px)}
+.menu{display:none}.title{font-weight:850;flex:1}.status{font-size:11px;color:#8190a8;display:flex;align-items:center;gap:6px}.dot{width:7px;height:7px;border-radius:50%;background:#34d399}.user{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:5px 9px;font-size:12px}.avatar{width:28px;height:28px;border-radius:50%;overflow:hidden;background:#1e2a40;display:grid;place-items:center;font-weight:800}.avatar img{width:100%;height:100%;object-fit:cover}
+.messages{flex:1;overflow:auto;padding:28px max(14px,calc((100% - 920px)/2));scroll-behavior:smooth}.welcome{min-height:100%;display:grid;place-items:center;text-align:center}.welcome-inner{max-width:720px;padding:25px}.big-logo{width:90px;height:90px;margin:auto auto 20px;filter:drop-shadow(0 0 30px rgba(49,200,255,.25))}.welcome h1{font-size:clamp(30px,5vw,52px);margin:0 0 12px}.welcome p{color:var(--muted);line-height:1.7;margin:0 auto 23px}.quick{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}.quick button{border:1px solid var(--line);background:#0e1625;color:#cbd6e6;border-radius:999px;padding:9px 12px}
+.msg{display:flex;gap:10px;margin:0 auto 21px;max-width:920px}.msg.user{justify-content:flex-end}
+.bubble{max-width:min(84%,780px);padding:13px 15px;border-radius:17px;font-size:14.5px;font-weight:600;line-height:1.65;overflow-wrap:anywhere;border:1.5px solid #000;box-shadow:0 2px 8px rgba(0,0,0,.45)}
+.msg.assistant .bubble{background:#0f1726;color:#eef4ff}
+.msg.user .bubble{background:linear-gradient(135deg,#166a9c,#4d58c9);color:#fff}
+.msg-tools{display:flex;gap:5px;margin-top:5px}.msg-tools button{border:0;background:transparent;color:#7c8ba4;font-size:11px;padding:3px 5px;font-weight:700}.msg-tools button:hover{color:white}
+pre{background:#070b13;border:1px solid #27334a;border-radius:10px;padding:12px;overflow:auto}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}a{color:#65d2ff}
+.bubble h1,.bubble h2,.bubble h3,.bubble h4{margin:12px 0 6px;line-height:1.3;font-weight:800;color:#eef4ff}
+.bubble h1{font-size:20px}.bubble h2{font-size:17px}.bubble h3{font-size:15px}.bubble h4{font-size:14px}
+.bubble ul,.bubble ol{margin:8px 0;padding-left:22px}.bubble li{margin:3px 0}
+.composer-wrap{border-top:1px solid var(--line);background:#080c15;padding:11px max(14px,calc((100% - 920px)/2))}.composer{display:flex;gap:8px;align-items:flex-end;background:#0f1726;border:1px solid #293650;border-radius:16px;padding:8px}.composer textarea{flex:1;min-height:42px;max-height:180px;resize:none;border:0;outline:0;background:transparent;color:white;padding:9px}.attach{width:42px;height:42px;border:1px solid #293650;border-radius:12px;background:#111a2a;color:#dce5f4;font-size:18px}.attach:hover{background:#172237}.file-preview{display:none;align-items:center;gap:8px;padding:7px 9px;margin:0 0 7px;background:#0c1422;border:1px solid #293650;border-radius:12px;font-size:11px;color:#b9c6d9}.file-preview.show{display:flex}.file-preview img{width:38px;height:38px;object-fit:cover;border-radius:8px}.file-preview button{margin-left:auto;border:0;background:transparent;color:#ff8ea2}.image-actions{display:none;gap:7px;overflow:auto;padding:2px 1px 8px;margin:0 0 2px}.image-actions.show{display:flex}.image-actions button{flex:0 0 auto;border:1px solid #293650;background:#111a2a;color:#cbd6e6;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:700}.image-actions button:hover{background:#172237;border-color:#3c4e70}.generated-image{display:block;max-width:100%;width:auto;max-height:520px;border-radius:14px;margin-top:8px;border:1px solid #263552;box-shadow:0 12px 40px #0006}.research-sources{margin-top:10px;padding-top:8px;border-top:1px solid #23304a;font-size:11px;color:#91a0b8}.research-sources a{display:block;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.send{width:42px;height:42px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--a),var(--b));color:#fff;font-weight:900}.send:disabled{opacity:.45;cursor:not-allowed}.hint{text-align:center;color:#58667d;font-size:10px;padding-top:6px}
+.thinking-row{display:flex;gap:10px;margin:0 auto 21px;max-width:920px}.thinking-bubble{display:inline-flex;align-items:center;gap:8px;background:#0f1726;border:1.5px solid #000;border-radius:17px;padding:12px 15px;color:#9aa8bd;font-size:14px;font-weight:600}.thinking-dots{display:inline-flex;gap:4px;align-items:center}.thinking-dots i{width:5px;height:5px;border-radius:50%;background:#8a96aa;animation:thinkingPulse 1s infinite ease-in-out}.thinking-dots i:nth-child(2){animation-delay:.15s}.thinking-dots i:nth-child(3){animation-delay:.3s}@keyframes thinkingPulse{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-4px);opacity:1}}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;place-items:center;padding:16px;z-index:50}.overlay.show{display:grid}.modal{width:min(440px,100%);background:#0e1523;border:1px solid #2b3852;border-radius:20px;padding:22px;box-shadow:0 25px 80px #0008}.modal h2{margin:0 0 7px}.muted{color:var(--muted);font-size:13px;line-height:1.55}.tabs{display:flex;background:#090e17;padding:4px;border-radius:10px;margin:15px 0}.tabs button{flex:1;border:0;background:transparent;color:#77859d;padding:9px;border-radius:8px}.tabs button.active{background:#1b273c;color:white}.google{width:100%;border:1px solid #d6d9df;background:white;color:#111;border-radius:11px;padding:11px;font-weight:850}.or{display:flex;align-items:center;gap:8px;color:#637087;font-size:10px;margin:14px 0}.or:before,.or:after{content:"";height:1px;background:#273249;flex:1}.field{margin:11px 0}.field label{display:block;color:#aeb9ca;font-size:11px;margin-bottom:6px}.field input{width:100%;background:#090f19;border:1px solid #2a3750;color:white;border-radius:10px;padding:11px;outline:0}.field input:focus{border-color:var(--a)}.primary{width:100%;border:0;border-radius:11px;padding:11px;background:linear-gradient(135deg,var(--a),var(--b));color:white;font-weight:900}.link{border:0;background:transparent;color:#60cfff;font-size:11px;padding:8px 0}.error{display:none;background:#351521;border:1px solid #633044;color:#ffb1c0;border-radius:9px;padding:9px;font-size:12px;margin:9px 0}.modal-actions{display:flex;gap:8px;margin-top:15px}.modal-actions .btn{flex:1}.danger{border:0;background:#4c1726;color:#ffb2c0;border-radius:10px;padding:10px 13px;font-weight:800}
+.limit-card{margin:0 0 12px;padding:13px 14px;border:1px solid #293650;background:#0b1320;border-radius:13px;display:none}
+.limit-card.show{display:block}.limit-title{font-weight:850;font-size:14px;margin-bottom:5px}.limit-text{color:#9aa8bd;font-size:12px;line-height:1.5}
+.limit-actions{display:flex;gap:8px;margin-top:12px}.limit-actions button{flex:1;border:0;border-radius:10px;padding:10px 9px;font-weight:850;font-size:12px}.upgrade-btn{background:linear-gradient(135deg,var(--a),var(--b));color:white}.ad-btn{background:#18243a;color:#dce5f4;border:1px solid #30405d!important}
+.usage-pill{font-size:10px;color:#8fa0b8;margin-left:8px}
+.toast{position:fixed;left:50%;bottom:88px;transform:translate(-50%,20px);background:#172238;border:1px solid #2b3954;color:white;border-radius:10px;padding:10px 14px;font-size:12px;opacity:0;pointer-events:none;transition:.2s;z-index:100}.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:760px){.sidebar{position:fixed;left:-300px;top:0;bottom:0;z-index:45;transition:.22s}.sidebar.open{left:0}.menu{display:block}.messages{padding:18px 11px}.composer-wrap{padding:9px 11px}.bubble{max-width:92%}.status{display:none}.user span{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <svg class="brand-logo" viewBox="0 0 100 100" aria-label="NexusMind AI logo">
+      <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#7eeaff"/><stop offset=".48" stop-color="#31c8ff"/><stop offset="1" stop-color="#5968ff"/></linearGradient></defs>
+      <circle cx="50" cy="50" r="44" fill="#0d1729" stroke="#243a5c" stroke-width="2"/>
+      <path d="M27 70V30h12l24 27V30h10v40H62L37 43v27z" fill="url(#g)"/>
+      <path d="M18 62C35 82 68 83 84 54C91 41 82 24 67 19" fill="none" stroke="#54ddff" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="78" cy="23" r="4" fill="#fff"/>
+    </svg>
+    <div><strong>NexusMind AI</strong><small>Your smarter assistant</small></div>
+  </div>
+  <button class="new" id="newChat">＋ New chat</button>
+  <div class="label">Your chats</div>
+  <div class="chats" id="chatList"></div>
+  <div class="bottom"><button class="btn" id="settings">⚙ Settings</button><button class="btn" id="logout">↪ Log out</button></div>
+</aside>
+
+<main class="main">
+<header class="top"><button class="btn menu" id="menu">☰</button><div class="title" id="title">New chat</div><div class="status"><i class="dot"></i> Online</div><div class="user"><div class="avatar" id="avatar">?</div><span id="userName">Guest</span></div></header>
+<section class="messages" id="messages">
+  <div class="welcome" id="welcome">
+    <div class="welcome-inner">
+      <svg class="big-logo" viewBox="0 0 100 100">
+        <defs><linearGradient id="g2" x1="0" x2="1"><stop stop-color="#7eeaff"/><stop offset=".5" stop-color="#31c8ff"/><stop offset="1" stop-color="#5968ff"/></linearGradient></defs>
+        <circle cx="50" cy="50" r="43" fill="#0d1729" stroke="#274266" stroke-width="2"/>
+        <path d="M27 70V30h12l24 27V30h10v40H62L37 43v27z" fill="url(#g2)"/>
+        <path d="M17 61C34 83 70 82 84 53C91 39 82 24 67 19" fill="none" stroke="#54ddff" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="78" cy="23" r="4" fill="white"/>
+      </svg>
+      <h1>What can I help you with?</h1>
+      <p>NexusMind AI can answer questions, write and rewrite content, help with code, solve problems, and remember information you explicitly ask it to remember.</p>
+      <div class="quick">
+        <button data-prompt="Explain quantum computing simply">Explain something</button>
+        <button data-prompt="Write a professional email asking for a meeting">Write for me</button>
+        <button data-prompt="Create a responsive HTML landing page">Help me code</button>
+        <button data-prompt="Calculate 25% of 480">Do a calculation</button>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="composer-wrap"><div class="limit-card" id="freeUsageCard"><div class="limit-title">NexusMind Free <span class="usage-pill" id="freeUsageText"></span></div><div class="limit-text">Free messages reset daily. Upgrade to Pro for more access and no ads.</div></div><div class="file-preview" id="filePreview"><img id="filePreviewImg" alt="Selected image"><span id="filePreviewName">Image attached</span><button id="clearFile" title="Remove image">×</button></div><div class="image-actions" id="imageActions"><button data-image-action="guide">Guide me</button><button data-image-action="fix">Fix this</button><button data-image-action="project">Turn this into a project</button><button data-image-action="explain">Explain this</button><button data-image-action="next">What should I do next?</button></div><div class="composer"><input id="imageFile" type="file" accept="image/*" hidden><button class="attach" id="attachImage" title="Upload an image">＋</button><textarea id="input" rows="1" placeholder="Message NexusMind AI..." disabled></textarea><button class="send" id="send" title="Send" disabled>➤</button></div><div class="hint">Enter to send • Shift + Enter for a new line • Attach an image to let NexusMind AI see it</div></div>
+</main>
+</div>
+
+<div class="overlay" id="authOverlay">
+<div class="modal">
+  <div style="text-align:center"><svg style="width:62px;height:62px" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#0d1729" stroke="#274266" stroke-width="2"/><path d="M27 70V30h12l24 27V30h10v40H62L37 43v27z" fill="url(#g2)"/><path d="M18 62C35 82 68 83 84 54C91 41 82 24 67 19" fill="none" stroke="#54ddff" stroke-width="3"/></svg><h2>Welcome to NexusMind AI</h2><p class="muted">Create an account or sign in to save your chats.</p></div>
+  <div class="tabs"><button class="active" id="loginTab">Sign in</button><button id="signupTab">Create account</button></div>
+  <button class="google" id="google">G&nbsp;&nbsp; Continue with Google</button><div class="or">OR</div>
+  <div class="field"><label>Email</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div>
+  <div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password" placeholder="At least 6 characters"></div>
+  <button class="link" id="forgot">Forgot password?</button><div class="error" id="authError"></div>
+  <button class="primary" id="authSubmit">Sign in</button>
+</div>
+</div>
+
+<div class="overlay" id="settingsOverlay"><div class="modal"><h2>Settings</h2><p class="muted">Your NexusMind AI account.</p><div class="field"><label>Email</label><input id="settingsEmail" readonly></div><div class="field"><label>Display name</label><input id="settingsName" readonly></div><div class="modal-actions"><button class="btn" id="closeSettings">Close</button><button class="danger" id="settingsLogout">Log out</button></div></div></div>
+<div class="overlay" id="confirmOverlay"><div class="modal"><h2 id="confirmTitle">Confirm</h2><p class="muted" id="confirmText"></p><div class="modal-actions"><button class="btn" id="confirmCancel">Cancel</button><button class="danger" id="confirmOk">Delete</button></div></div></div>
+
+<div class="overlay" id="limitOverlay">
+  <div class="modal">
+    <h2>Free limit reached</h2>
+    <p class="muted">You've used your free NexusMind AI messages for today. Choose an option to keep chatting.</p>
+    <div class="limit-card show" style="margin-top:14px">
+      <div class="limit-title">🆓 Free plan</div>
+      <div class="limit-text" id="limitStats">20 messages included today.</div>
+    </div>
+    <div class="limit-actions">
+      <button class="upgrade-btn" id="upgradeBtn">⭐ Upgrade to Pro</button>
+      <button class="ad-btn" id="watchAdBtn">📺 Watch Ad +10</button>
+    </div>
+    <button class="link" id="closeLimit" style="margin-top:9px">Not now</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="bootError" style="display:none;position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:200;background:#351521;border:1px solid #633044;color:#ffb1c0;border-radius:10px;padding:10px 14px;font-size:12px;max-width:calc(100% - 24px);text-align:center"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+  getAdditionalUserInfo,
+  setPersistence,
+  browserLocalPersistence,
+  browserPopupRedirectResolver
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  limit,
+  onSnapshot,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAoGBZDEiJodPF5U5PSfTJl1uwCiCjXg4g",
+  authDomain: "nexusai-50c52.firebaseapp.com",
+  projectId: "nexusai-50c52",
+  storageBucket: "nexusai-50c52.firebasestorage.app",
+  messagingSenderId: "918523028261",
+  appId: "1:918523028261:web:3ba084bccb4cfdd04f30cc",
+  measurementId: "G-VV4G4964G4"
+};
+
+const $ = (id) => document.getElementById(id);
+let user = null;
+let currentChat = null;
+let chatsUnsub = null;
+let msgUnsub = null;
+let busy = false;
+let authMode = "login";
+let confirmFn = null;
+let pendingAuthSuccess = "";
+let authStateReady = false;
+let suppressAuthUntil = 0;
+let attachedImage = null;
+const generatedImageCache = new Map();
+
+function bootError(message) {
+  console.error("NexusMind AI startup error:", message);
+  const el = $("bootError");
+  if (el) {
+    el.textContent = message;
+    el.style.display = "block";
+  }
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  }[c]));
+}
+
+function md(s) {
+  let x = esc(s);
+  x = x.replace(/```([\s\S]*?)```/g, (_, c) => "<pre><code>" + c.trim() + "</code></pre>");
+  x = x.replace(/`([^`]+)`/g, "<code>$1</code>");
+  x = x.replace(/^#### (.*)$/gm, "<h4>$1</h4>");
+  x = x.replace(/^### (.*)$/gm, "<h3>$1</h3>");
+  x = x.replace(/^## (.*)$/gm, "<h2>$1</h2>");
+  x = x.replace(/^# (.*)$/gm, "<h1>$1</h1>");
+  x = x.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  x = x.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  x = x.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  x = x.replace(/^\s*[-*]\s+(.*)$/gm, "<li>$1</li>");
+  x = x.replace(/(<li>[\s\S]*?<\/li>)/g, "<ul>$1</ul>");
+  return x.replace(/\n/g, "<br>");
+}
+
+function toast(t) {
+  const el = $("toast");
+  if (!el) return;
+  el.textContent = t;
+  el.classList.add("show");
+  clearTimeout(window.nexusToastTimer);
+  window.nexusToastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+function timeAgo(ts) {
+  if (!ts) return "";
+  let ms;
+  if (typeof ts === "number") ms = ts;
+  else if (typeof ts === "string") ms = Date.parse(ts);
+  else if (ts.toDate) ms = ts.toDate().getTime();
+  else if (ts.seconds) ms = ts.seconds * 1000;
+  else return "";
+  const diff = Date.now() - ms;
+  if (isNaN(diff)) return "";
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return "now";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return min + "m ago";
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return hr + "h ago";
+  const day = Math.floor(hr / 24);
+  if (day === 1) return "Yesterday";
+  if (day < 7) return day + "d ago";
+  return new Date(ms).toLocaleDateString();
+}
+
+function authError(e) {
+  const m = {
+    "auth/invalid-credential": "Incorrect email or password.",
+    "auth/invalid-email": "Enter a valid email address.",
+    "auth/email-already-in-use": "An account already exists with this email.",
+    "auth/weak-password": "Password must be at least 6 characters.",
+    "auth/popup-closed-by-user": "Google sign-in was cancelled.",
+    "auth/popup-blocked": "Google sign-in was blocked. Please try again.",
+    "auth/too-many-requests": "Too many attempts. Please wait and try again.",
+    "auth/network-request-failed": "Network error. Check your connection.",
+    "auth/user-not-found": "No account was found with that email.",
+    "auth/wrong-password": "Incorrect email or password.",
+    "auth/operation-not-allowed": "Email/password sign-in is not enabled in Firebase Authentication.",
+    "auth/unauthorized-domain": "This website is not authorized in Firebase Authentication.",
+    "auth/invalid-api-key": "The Firebase API key is invalid or restricted.",
+    "auth/internal-error": "Firebase returned an internal authentication error. Please try again.",
+    "auth/web-storage-unsupported": "This browser is blocking the storage Firebase needs for login.",
+    "auth/cancelled-popup-request": "Another Google login request is already running.",
+    "auth/redirect-cancelled-by-user": "Google sign-in was cancelled.",
+    "auth/redirect-operation-pending": "A Google sign-in is already pending. Please wait."
+  };
+  return m[e?.code] || e?.message || "Something went wrong.";
+}
+
+function showAuth() { $("authOverlay")?.classList.add("show"); }
+function hideAuth() { $("authOverlay")?.classList.remove("show"); if ($("authError")) $("authError").style.display = "none"; }
+
+function setAuthMode(mode) {
+  authMode = mode;
+  $("loginTab")?.classList.toggle("active", mode === "login");
+  $("signupTab")?.classList.toggle("active", mode === "signup");
+  if ($("authSubmit")) $("authSubmit").textContent = mode === "login" ? "Sign in" : "Create account";
+  if ($("forgot")) $("forgot").style.display = mode === "login" ? "block" : "none";
+  if ($("authError")) $("authError").style.display = "none";
+}
+
+function chatCol() { return collection(db, "users", user.uid, "chats"); }
+function msgCol(id) { return collection(db, "users", user.uid, "chats", id, "messages"); }
+
+function removeThinking() {
+  $("messages")?.querySelector("[data-thinking]")?.remove();
+}
+
+function showThinking() {
+  const messages = $("messages");
+  const welcome = $("welcome");
+  if (!messages || !welcome) return;
+  removeThinking();
+  welcome.hidden = true;
+  welcome.style.display = "none";
+  const row = document.createElement("div");
+  row.className = "thinking-row";
+  row.setAttribute("data-thinking", "true");
+  row.innerHTML = '<div class="thinking-bubble"><span>Thinking</span><span class="thinking-dots"><i></i><i></i><i></i></span></div>';
+  messages.appendChild(row);
+  requestAnimationFrame(() => { messages.scrollTop = messages.scrollHeight; });
+}
+
+function showWelcome() {
+  const messages = $("messages");
+  const welcome = $("welcome");
+  if (!messages || !welcome) return;
+  removeThinking();
+  messages.querySelectorAll(".msg").forEach(el => el.remove());
+  welcome.hidden = false;
+  welcome.style.display = "grid";
+  messages.scrollTop = 0;
+}
+
+function renderMessages(items) {
+  const messages = $("messages");
+  const welcome = $("welcome");
+  if (!messages || !welcome) return;
+  const thinking = messages.querySelector("[data-thinking]");
+  thinking?.remove();
+  messages.querySelectorAll(".msg").forEach(el => el.remove());
+  if (!items.length) return showWelcome();
+  welcome.style.display = "none";
+  welcome.hidden = true;
+  for (const m of items) {
+    const row = document.createElement("div");
+    row.className = "msg " + (m.role === "user" ? "user" : "assistant");
+    const b = document.createElement("div");
+    b.className = "bubble";
+    b.innerHTML = md(m.content || "");
+    if (m.role === "assistant" && (m.imageData || m.imageUrl || m.imageGenerated)) {
+      const imageSrc = m.imageData || m.imageUrl || generatedImageCache.get(currentChat) || "";
+      if (imageSrc) {
+        const img = document.createElement("img");
+        img.className = "generated-image";
+        img.alt = "Generated by NexusMind AI";
+        img.src = imageSrc;
+        img.loading = "lazy";
+        b.appendChild(img);
+      }
+    }
+    if (m.role === "assistant" && Array.isArray(m.sources) && m.sources.length) {
+      const src = document.createElement("div");
+      src.className = "research-sources";
+      src.innerHTML = '<strong>Sources</strong>';
+      m.sources.slice(0, 5).forEach(s => {
+        if (!s?.url) return;
+        const a = document.createElement("a"); a.href = s.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = s.title || s.url; src.appendChild(a);
+      });
+      b.appendChild(src);
+    }
+    if (m.role === "assistant") {
+      const tools = document.createElement("div");
+      tools.className = "msg-tools";
+      tools.innerHTML = '<button data-copy>Copy</button>';
+      b.appendChild(tools);
+      tools.querySelector("[data-copy]").onclick = async () => {
+        try { await navigator.clipboard?.writeText(m.content || ""); toast("Copied"); }
+        catch { toast("Copy failed"); }
+      };
+    }
+    row.appendChild(b);
+    messages.appendChild(row);
+  }
+  if (thinking) messages.appendChild(thinking);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function autoTitle(text) {
+  let t = String(text || "").replace(/\s+/g, " ").trim();
+  if (!t) return "New chat";
+  if (t.length > 42) t = t.slice(0, 42).trim() + "…";
+  return t;
+}
+
+async function createChat(title = "New chat") {
+  if (!user) return null;
+  const r = doc(chatCol());
+  await setDoc(r, {
+    title,
+    lastMessage: "",
+    lastMessageAt: serverTimestamp(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+  return r.id;
+}
+
+async function chooseChat(id) {
+  if (!user || !id) return;
+  try {
+    const d = await getDoc(doc(db, "users", user.uid, "chats", id));
+    if (!d.exists()) return;
+    currentChat = id;
+    $("sidebar")?.classList.remove("open");
+    $("title").textContent = d.data()?.title || "New chat";
+    if (msgUnsub) msgUnsub();
+    msgUnsub = onSnapshot(
+      query(msgCol(id), orderBy("createdAt", "asc")),
+      s => renderMessages(s.docs.map(x => ({ id: x.id, ...x.data() }))),
+      e => {
+        console.error("Message listener error:", e);
+        toast("Could not load this chat.");
+        showWelcome();
+      }
+    );
+  } catch (e) {
+    console.error("Choose chat error:", e);
+    toast("Could not open this chat.");
+    showWelcome();
+  }
+}
+
+function renderChats(items) {
+  const list = $("chatList");
+  if (!list) return;
+  list.innerHTML = "";
+  if (!items.length) {
+    list.innerHTML = '<div style="font-size:12px;color:#68758b;padding:10px">No chats yet.</div>';
+    return;
+  }
+  for (const c of items) {
+    const el = document.createElement("div");
+    el.className = "chat" + (c.id === currentChat ? " active" : "");
+    const preview = (c.lastMessage || "").slice(0, 60) || "Tap to open";
+    const timeStr = timeAgo(c.updatedAt || c.lastMessageAt || c.createdAt);
+    el.innerHTML =
+      '<span class="chat-icon">💬</span>' +
+      '<span class="chat-title">' + esc(c.title || "New chat") + '</span>' +
+      '<span class="chat-time">' + esc(timeStr) + '</span>' +
+      '<span class="chat-preview">' + esc(preview) + '</span>' +
+      '<button class="chat-del" title="Delete chat">×</button>';
+    el.onclick = () => chooseChat(c.id);
+    el.querySelector(".chat-del").onclick = e => {
+      e.stopPropagation();
+      confirmBox("Delete chat?", "This chat and all its messages will be deleted.", () => deleteChat(c.id));
+    };
+    list.appendChild(el);
+  }
+}
+
+function listenChats() {
+  if (!user) return;
+  if (chatsUnsub) chatsUnsub();
+  try {
+    chatsUnsub = onSnapshot(
+      query(chatCol(), orderBy("updatedAt", "desc"), limit(50)),
+      s => renderChats(s.docs.map(d => ({ id: d.id, ...d.data() }))),
+      e => {
+        console.error("Chat history listener error:", e);
+        renderChats([]);
+        toast("Chat history is unavailable, but NexusMind AI is still ready.");
+      }
+    );
+  } catch (e) {
+    console.error("Chat history setup error:", e);
+    renderChats([]);
+  }
+}
+
+async function deleteChat(id) {
+  try {
+    const snap = await getDocs(query(msgCol(id)));
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+    await deleteDoc(doc(chatCol(), id));
+    if (currentChat === id) {
+      if (msgUnsub) msgUnsub();
+      msgUnsub = null;
+      currentChat = null;
+      $("title").textContent = "New chat";
+      showWelcome();
+    }
+    toast("Chat deleted");
+  } catch (e) {
+    console.error(e);
+    toast("Could not delete chat.");
+  }
+}
+
+function confirmBox(title, text, fn) {
+  $("confirmTitle").textContent = title;
+  $("confirmText").textContent = text;
+  confirmFn = fn;
+  $("confirmOverlay").classList.add("show");
+}
+
+function isImageRequest(text) {
+  return /\b(generate|create|draw|make|design|render|produce)\b[\s\S]{0,40}\b(image|picture|poster|logo|illustration|artwork|photo|cover)\b/i.test(text || '') || /^image[:\s]/i.test(text || '');
+}
+
+function setImageActionsVisible(show) {
+  $("imageActions")?.classList.toggle("show", !!show);
+}
+
+function clearAttachedImage() {
+  attachedImage = null;
+  const p = $("filePreview");
+  if (p) p.classList.remove("show");
+  setImageActionsVisible(false);
+  const f = $("imageFile");
+  if (f) f.value = "";
+}
+
+async function optimizeImage(file) {
+  if (!file || !file.type.startsWith("image/")) throw new Error("Please choose an image file.");
+  if (file.size > 8 * 1024 * 1024) throw new Error("Image is too large. Please choose an image under 8 MB.");
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = url;
+    });
+    const max = 1600;
+    const scale = Math.min(1, max / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Your browser could not prepare the image.");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const data = canvas.toDataURL("image/jpeg", 0.84);
+    return {data:data.split(",")[1],mime:"image/jpeg",preview:data,name:file.name};
+  } finally { URL.revokeObjectURL(url); }
+}
+
+async function generateImage(prompt, id, c) {
+  if (!user) throw new Error("Please sign in first.");
+  const token = await user.getIdToken();
+  const response = await fetch("/api/image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+    body: JSON.stringify({ prompt: String(prompt || "").trim(), aspectRatio: "1:1", resolution: "1K" })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.available === false) {
+    throw new Error(data.error || "Image generation is currently unavailable.");
+  }
+  const imageUrl = data.imageUrl || data.image || data.url || data.secure_url;
+  if (!imageUrl) throw new Error("Image generation completed, but no image URL was returned.");
+  removeThinking();
+
+  const row = document.createElement("div");
+  row.className = "msg assistant";
+  const b = document.createElement("div");
+  b.className = "bubble";
+  b.innerHTML = "<div>Here is the image I created:</div>";
+  const img = document.createElement("img");
+  img.className = "generated-image";
+  img.alt = "Generated by NexusMind AI";
+  img.src = imageUrl;
+  img.loading = "lazy";
+  b.appendChild(img);
+  generatedImageCache.set(id, imageUrl);
+
+  const tools = document.createElement("div");
+  tools.className = "msg-tools";
+  tools.innerHTML = '<button data-download>Save image</button><button data-copy-image>Copy image link</button>';
+  tools.querySelector("[data-download]").onclick = () => {
+    try {
+      const a = document.createElement("a");
+      a.href = imageUrl;
+      a.download = "nexusmind-ai-image.png";
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch { window.open(imageUrl, "_blank", "noopener"); }
+  };
+  tools.querySelector("[data-copy-image]").onclick = async () => {
+    try { await navigator.clipboard.writeText(imageUrl); toast("Image link copied"); }
+    catch { toast("Could not copy image link"); }
+  };
+  b.appendChild(tools);
+  row.appendChild(b);
+  $("messages").appendChild(row);
+  $("messages").scrollTop = $("messages").scrollHeight;
+
+  const messageData = {
+    role: "assistant",
+    content: "Here is the image I created.",
+    imageGenerated: true,
+    imageData: imageUrl,
+    imageUrl: imageUrl,
+    model: data.model || "nano-banana-2",
+    provider: data.provider || "cloudinary",
+    createdAt: serverTimestamp()
+  };
+  try {
+    await addDoc(msgCol(id), messageData);
+    await setDoc(c, { updatedAt: serverTimestamp(), lastMessage: "🖼️ Image generated", lastMessageAt: serverTimestamp() }, { merge: true });
+  } catch (saveError) {
+    console.error("Generated image history save failed:", saveError);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 700));
+      await addDoc(msgCol(id), messageData);
+      await setDoc(c, { updatedAt: serverTimestamp(), lastMessage: "🖼️ Image generated", lastMessageAt: serverTimestamp() }, { merge: true });
+    } catch (retryError) {
+      console.error("Generated image history retry failed:", retryError);
+      toast("Image created. It could not be added to chat history.");
+    }
+  }
+}
+
+function imageActionPrompt(action) {
+  const prompts = {
+    guide: "Guide me step-by-step on what I should do with this image. Identify what matters in the image, infer the likely task, and give me a practical next action.",
+    fix: "Look at this image and help me fix the problem shown. Explain what is wrong, why it may be happening, and give me exact step-by-step instructions to fix it.",
+    project: "Look at this image and turn what you see into a practical project guide. Give me the project goal, requirements, tools, suggested structure, implementation steps, testing steps, and what I should do first.",
+    explain: "Explain this image clearly. Tell me what I am looking at, what the important parts mean, and what I should do next if there is an obvious task.",
+    next: "Look at this image and tell me what I should do next. Give me the most useful practical next step first, followed by a short step-by-step plan."
+  };
+  return prompts[action] || prompts.guide;
+}
+
+async function sendMessage(textOverride=null) {
+  if(!user) return showAuth();
+  if(busy) return;
+  const text=(textOverride ?? $("input").value).trim();
+  if(!text && !attachedImage) return;
+  busy=true; $("send").disabled=true; showThinking();
+  if(textOverride===null){$("input").value="";$("input").style.height="auto";}
+  const image=attachedImage; clearAttachedImage();
+  try{
+    let id=currentChat;
+    let isNewChat = false;
+    if(!id){
+      id=await createChat(autoTitle(text) || "Image guidance");
+      currentChat=id;
+      isNewChat = true;
+      chooseChat(id);
+    }
+    const c=doc(chatCol(),id); const tokenPromise=user.getIdToken();
+    const userDisplayText=text || (image ? "Guide me through what I should do with this image." : "Help me.");
+    const preview = userDisplayText.replace(/\s+/g, " ").slice(0, 80);
+
+    const chatUpdate = {
+      lastMessage: preview,
+      lastMessageAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    if (isNewChat) {
+      chatUpdate.title = autoTitle(text) || "Image guidance";
+    }
+
+    await Promise.all([
+      addDoc(msgCol(id),{role:"user",content:userDisplayText,hasImage:!!image,createdAt:serverTimestamp()}),
+      setDoc(c, chatUpdate, {merge:true})
+    ]);
+    const token=await tokenPromise;
+    if(!image && isImageRequest(text)) {
+      await generateImage(text,id,c);
+      await fetchUsage();
+    } else {
+      const body={chatId:id,message:userDisplayText,...(image?{imageData:image.data,imageMime:image.mime}:{})};
+      const response=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify(body)});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok) {
+        if (response.status === 429 && data.error === 'FREE_LIMIT_REACHED') {
+          const stats = $('limitStats');
+          if (stats) stats.textContent = `You have used your free messages for today. ${Number(data.bonusMessages || 0) ? `Bonus messages remaining: ${Number(data.bonusMessages || 0)}.` : ''}`;
+          $('limitOverlay')?.classList.add('show');
+          throw new Error('Free daily limit reached.');
+        }
+        throw new Error(data.error||"NexusMind AI is temporarily unavailable.");
+      }
+      if(!data.text) throw new Error("The AI returned an empty response. Please try again.");
+      removeThinking();
+      const replyPreview = String(data.text).replace(/\s+/g," ").slice(0, 80);
+      await addDoc(msgCol(id),{role:"assistant",content:data.text,model:data.model||"",sources:data.sources||[],createdAt:serverTimestamp()});
+      await setDoc(c,{lastMessage: replyPreview, lastMessageAt: serverTimestamp(), updatedAt:serverTimestamp()},{merge:true});
+      if(data.remembered) toast("Saved to Nexus memory");
+      if (data.plan !== 'pro') await fetchUsage();
+    }
+  }catch(e){console.error("Send message error:",e);removeThinking();if(e.message !== 'Free daily limit reached.') toast(e.message||"Message failed.");}
+  finally{busy=false;$("send").disabled=!user;$("input").focus();}
+}
+
+async function login() {
+  const email = $("email").value.trim();
+  const pass = $("password").value;
+  if (!email || !pass) {
+    $("authError").textContent = "Enter your email and password.";
+    $("authError").style.display = "block";
+    return;
+  }
+  const btn = $("authSubmit");
+  btn.disabled = true;
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+    if (authMode === "login") {
+      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      user = cred.user;
+      pendingAuthSuccess = "Welcome back!";
+    } else {
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      user = cred.user;
+      try { await updateProfile(user, { displayName: email.split("@")[0] }); } catch {}
+      pendingAuthSuccess = "Account created successfully! Welcome to NexusMind AI!";
+    }
+    suppressAuthUntil = Date.now() + 8000;
+    hideAuth();
+    activateUserUI(user);
+    const message = pendingAuthSuccess;
+    pendingAuthSuccess = "";
+    setTimeout(() => toast(message), 120);
+  } catch (e) {
+    console.error(e);
+    $("authError").textContent = authError(e);
+    $("authError").style.display = "block";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function googleLogin() {
+  const btn = $("google");
+  btn.disabled = true;
+  btn.textContent = "Connecting to Google…";
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    if (isMobile) {
+      await signInWithRedirect(auth, new GoogleAuthProvider(), browserPopupRedirectResolver);
+      return;
+    }
+    const result = await signInWithPopup(auth, new GoogleAuthProvider(), browserPopupRedirectResolver);
+    const info = getAdditionalUserInfo(result);
+    pendingAuthSuccess = info?.isNewUser ? "Google account created successfully! Welcome to NexusMind AI!" : "Welcome back!";
+  } catch (e) {
+    console.error(e);
+    $("authError").textContent = authError(e);
+    $("authError").style.display = "block";
+    btn.disabled = false;
+    btn.innerHTML = "G&nbsp;&nbsp; Continue with Google";
+  }
+}
+
+async function fetchUsage() {
+  if (!user) return;
+  try {
+    const token = await user.getIdToken();
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action: 'usage' })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return;
+    const card = $('freeUsageCard');
+    const text = $('freeUsageText');
+    if (card && text) {
+      card.classList.toggle('show', d.plan !== 'pro');
+      text.textContent = d.plan === 'pro' ? 'Pro' : `${Math.max(0, Number(d.remaining ?? 0))} messages left today`;
+    }
+  } catch (e) { console.warn('Usage check failed:', e); }
+}
+
+function closeLimitModal() { $('limitOverlay')?.classList.remove('show'); }
+
+function openUpgrade() {
+  closeLimitModal();
+  toast('Pro upgrades will be available soon.');
+}
+
+async function claimAdReward() {
+  if (!user) return showAuth();
+  const btn = $('watchAdBtn');
+  if (btn) btn.disabled = true;
+  try {
+    toast('Opening reward ad…');
+    const token = await user.getIdToken();
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action: 'reward_ad' })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Reward unavailable.');
+    closeLimitModal();
+    toast(`+${d.rewardMessages || 10} messages added`);
+    await fetchUsage();
+  } catch (e) { toast(e.message || 'Reward unavailable.'); }
+  finally { if (btn) btn.disabled = false; }
+}
+
+function activateUserUI(u) {
+  if (!u) return;
+  $("userName").textContent = u.displayName || u.email?.split("@")[0] || "User";
+  $("avatar").innerHTML = u.photoURL ? '<img src="' + esc(u.photoURL) + '">' : esc((u.displayName || u.email || "U")[0].toUpperCase());
+  $("input").disabled = false;
+  $("send").disabled = false;
+  currentChat = null;
+  $("title").textContent = "New chat";
+  showWelcome();
+  listenChats();
+  fetchUsage();
+}
+
+function bindUI() {
+  $("loginTab").onclick = () => setAuthMode("login");
+  $("signupTab").onclick = () => setAuthMode("signup");
+  $("authSubmit").onclick = login;
+  $("google").onclick = googleLogin;
+  $("forgot").onclick = async () => {
+    const email = $("email").value.trim();
+    if (!email) return toast("Enter your email first.");
+    try { await sendPasswordResetEmail(auth, email); toast("Password reset email sent."); }
+    catch (e) { toast(authError(e)); }
+  };
+  $("closeLimit").onclick = closeLimitModal;
+  $("upgradeBtn").onclick = openUpgrade;
+  $("watchAdBtn").onclick = claimAdReward;
+  $("newChat").onclick = () => {
+    if (!user) return showAuth();
+    if (msgUnsub) msgUnsub();
+    msgUnsub = null;
+    currentChat = null;
+    $("title").textContent = "New chat";
+    showWelcome();
+    $("input").focus();
+  };
+  $("send").onclick = () => sendMessage();
+  $("attachImage").onclick = () => $("imageFile").click();
+  $("clearFile").onclick = clearAttachedImage;
+  $("imageFile").onchange = async e => {
+    try {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      attachedImage = await optimizeImage(f);
+      $("filePreviewImg").src = attachedImage.preview;
+      $("filePreviewName").textContent = attachedImage.name;
+      $("filePreview").classList.add("show");
+      setImageActionsVisible(true);
+      toast("Image ready. Choose an action or type your own question.");
+    } catch (err) { clearAttachedImage(); toast(err.message || "Could not attach image."); }
+  };
+  document.querySelectorAll("[data-image-action]").forEach(btn => {
+    btn.onclick = () => {
+      if (!attachedImage) return toast("Attach an image first.");
+      sendMessage(imageActionPrompt(btn.dataset.imageAction));
+    };
+  });
+  $("menu").onclick = () => $("sidebar").classList.toggle("open");
+  $("messages").addEventListener("click", () => $("sidebar").classList.remove("open"));
+  $("settings").onclick = () => {
+    if (!user) return showAuth();
+    $("settingsEmail").value = user.email || "";
+    $("settingsName").value = user.displayName || "Not set";
+    $("settingsOverlay").classList.add("show");
+  };
+  $("closeSettings").onclick = () => $("settingsOverlay").classList.remove("show");
+  $("logout").onclick = () => signOut(auth);
+  $("settingsLogout").onclick = () => signOut(auth).then(() => $("settingsOverlay").classList.remove("show"));
+  $("confirmCancel").onclick = () => { $("confirmOverlay").classList.remove("show"); confirmFn = null; };
+  $("confirmOk").onclick = async () => { const f = confirmFn; $("confirmOverlay").classList.remove("show"); confirmFn = null; if (f) await f(); };
+  $("input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+  $("input").addEventListener("input", () => { $("input").style.height = "auto"; $("input").style.height = Math.min($("input").scrollHeight, 180) + "px"; });
+  document.querySelectorAll("[data-prompt]").forEach(b => b.onclick = () => { $("input").value = b.dataset.prompt; sendMessage(); });
+  document.querySelector(".user")?.addEventListener("click", () => user ? $("settings").click() : showAuth());
+}
+
+let auth;
+let db;
+
+async function start() {
+  showWelcome();
+  try { bindUI(); setAuthMode("login"); }
+  catch (e) { console.error("NexusMind UI startup error:", e); }
+
+  try {
+    const app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } catch (e) {
+    console.error("NexusMind Firebase startup error:", e);
+    bootError("Firebase could not start. Check Firebase Authentication and Firestore settings.");
+    showAuth();
+    return;
+  }
+
+  try {
+    const redirect = await getRedirectResult(auth);
+    if (redirect) {
+      const info = getAdditionalUserInfo(redirect);
+      pendingAuthSuccess = info?.isNewUser
+        ? "Google account created successfully! Welcome to NexusMind AI!"
+        : "Welcome back!";
+    }
+  } catch (e) { console.error("Redirect result error:", e); }
+
+  onAuthStateChanged(auth, (u) => {
+    user = u;
+    if (u) {
+      authStateReady = true;
+      suppressAuthUntil = 0;
+      if (chatsUnsub) { chatsUnsub(); chatsUnsub = null; }
+      if (msgUnsub) { msgUnsub(); msgUnsub = null; }
+      hideAuth();
+      activateUserUI(u);
+      if (pendingAuthSuccess) {
+        const message = pendingAuthSuccess;
+        pendingAuthSuccess = "";
+        setTimeout(() => toast(message), 150);
+      }
+      return;
+    }
+    if (Date.now() < suppressAuthUntil) return;
+    authStateReady = true;
+    if (chatsUnsub) { chatsUnsub(); chatsUnsub = null; }
+    if (msgUnsub) { msgUnsub(); msgUnsub = null; }
+    currentChat = null;
+    $("userName").textContent = "Guest";
+    $("avatar").textContent = "?";
+    $("chatList").innerHTML = "";
+    $("input").disabled = true;
+    $("send").disabled = true;
+    $("title").textContent = "New chat";
+    showWelcome();
+    showAuth();
+  });
+}
+
+start().catch(e => {
+  console.error(e);
+  bootError("NexusMind AI started with limited functionality. Please refresh the page.");
+  showWelcome();
+});
+</script>
+
+</body>
+</html>
